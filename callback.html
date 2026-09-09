@@ -1,0 +1,71 @@
+<!doctype html><meta charset="utf-8"><title>Crescent Core &mdash; authorization</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<style>
+body{font:16px/1.6 -apple-system,system-ui,sans-serif;max-width:44rem;margin:3rem auto;padding:0 1.2rem;color:#1a1a1a}
+h1{font-size:1.5rem}
+a{color:#103659}
+code{font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f2f4f6;border:1px solid #dde2e7;border-radius:4px;padding:.15rem .35rem;word-break:break-all}
+#payload{display:block;padding:.8rem;margin:.6rem 0 0}
+button{font:600 15px/1 -apple-system,system-ui,sans-serif;background:#103659;color:#fff;border:0;border-radius:6px;padding:.7rem 1.1rem;cursor:pointer}
+button:focus-visible{outline:2px solid #103659;outline-offset:3px}
+.row{margin:1.4rem 0}
+.label{font:600 12px/1 -apple-system,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5b6a78}
+.bad{background:#fdf0f0;border-left:3px solid #a3241c;padding:1rem 1.2rem}
+</style>
+<h1>Crescent Core &mdash; authorization</h1>
+<div id="out">Reading the response from Intuit&hellip;</div>
+<p style="margin-top:2rem"><a href="index.html">Crescent Core legal documents</a></p>
+<script>
+(function () {
+  // Intuit will not accept a localhost redirect URI for production keys, so the grant comes
+  // back to this page instead of to a local web server. The page never sees a secret: the
+  // authorization code is single-use, useless without the client secret, and expires in
+  // minutes. It is shown here only so it can be pasted into qbo_authorize.py on the Mac.
+  var q = new URLSearchParams(location.search);
+  var code = q.get('code'), realm = q.get('realmId'), state = q.get('state');
+  var err = q.get('error'), errDesc = q.get('error_description');
+  var out = document.getElementById('out');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  if (err) {
+    out.innerHTML = '<div class="bad"><p><strong>Intuit refused the authorization.</strong></p>' +
+      '<p><code>' + esc(err) + '</code></p>' +
+      (errDesc ? '<p>' + esc(errDesc) + '</p>' : '') +
+      '<p>Nothing was connected. Run the authorize command again on the Mac.</p></div>';
+    return;
+  }
+
+  if (!code || !realm) {
+    out.innerHTML = '<div class="bad"><p><strong>This page is the OAuth callback for Crescent Core.</strong></p>' +
+      '<p>It has nothing to show unless Intuit sent you here as part of connecting ' +
+      'QuickBooks. There is nothing to do on this page.</p></div>';
+    return;
+  }
+
+  var payload = code + '|' + realm + (state ? '|' + state : '');
+  out.innerHTML =
+    '<p><strong>QuickBooks approved the connection.</strong> Copy the line below and paste it ' +
+    'into the Terminal window that is waiting for it.</p>' +
+    '<div class="row"><span class="label">Paste this</span>' +
+    '<code id="payload">' + esc(payload) + '</code></div>' +
+    '<button id="copy">Copy</button>' +
+    '<div class="row"><span class="label">Company (realm) id</span><br><code>' + esc(realm) + '</code></div>' +
+    '<p style="color:#5b6a78">The code above expires in a few minutes and can only be used once. ' +
+    'If it expires, run the authorize command again.</p>';
+
+  document.getElementById('copy').addEventListener('click', function () {
+    var btn = this;
+    navigator.clipboard.writeText(payload).then(function () {
+      btn.textContent = 'Copied';
+    }, function () {
+      btn.textContent = 'Select the text above and copy it';
+    });
+  });
+})();
+</script>
